@@ -1,0 +1,3 @@
+pandas
+pytest
+matplotlib  # optional, only needed for --plot

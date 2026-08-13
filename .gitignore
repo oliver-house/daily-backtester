@@ -1,0 +1,5 @@
+venv/
+data_cache/
+figures/
+__pycache__/
+.pytest_cache/
