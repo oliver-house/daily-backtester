@@ -1,37 +1,18 @@
-# daily-backtester
+# Daily Backtesting Engine
 
-Minimal daily backtesting engine for equities/ETFs. Data comes from Yahoo
-Finance's public chart API (no API key, no extra dependency — stdlib
-`urllib` only) and is cached locally in `data_cache/`. Prices are
-split/dividend adjusted, so returns are total returns.
-
-## Setup
-
-```
-venv\Scripts\pip install -r requirements.txt
-```
+Minimal daily backtesting engine for equities/ETFs.
 
 ## Usage
 
 ```
-venv\Scripts\python run.py SPY --strategy sma --fast 50 --slow 200
-venv\Scripts\python run.py SPY --strategy hold --start 2010-01-01
+python run.py SPY --strategy sma --fast 50 --slow 200
+python run.py SPY --strategy hold --start 2010-01-01
 ```
 
-Prints total return, CAGR, annual volatility, Sharpe, max drawdown, and
-trade count. Add `--plot` to show the equity curve (requires matplotlib).
-
-## Design
-
-- `backtest/data.py` — fetch daily OHLCV from Yahoo's chart API, cache to CSV.
-- `backtest/strategy.py` — a strategy is a function: OHLCV DataFrame -> position
-  Series in [-1, 1] (fraction of equity held each day).
-- `backtest/engine.py` — vectorized: a position set on day *t* earns day
-  *t+1*'s close-to-close return (no lookahead); position changes pay
-  `cost_bps` of traded notional.
+Add `--plot` to save an equity curve to `figures/`.
 
 ## Tests
 
 ```
-venv\Scripts\python -m pytest
+python -m pytest
 ```
