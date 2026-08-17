@@ -3,3 +3,4 @@ data_cache/
 figures/
 __pycache__/
 .pytest_cache/
+RESULTS.md

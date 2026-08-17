@@ -1,15 +1,13 @@
 # Daily Backtesting Engine
 
-Minimal daily backtesting engine for equities/ETFs.
+Minimal daily backtesting engine.
 
 ## Usage
 
 ```
-python run.py SPY --strategy sma --fast 50 --slow 200
-python run.py SPY --strategy hold --start 2010-01-01
+python run.py SPY --strategy sma
+python sweep.py SPY
 ```
-
-Add `--plot` to save an equity curve to `figures/`.
 
 ## Tests
 
