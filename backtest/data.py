@@ -1,9 +1,3 @@
-"""Daily OHLCV data from Yahoo Finance's public chart API, cached locally.
-
-Uses only the standard library for the HTTP fetch, so there is no
-dependency beyond pandas.
-"""
-
 import json
 import ssl
 import urllib.request
@@ -18,9 +12,6 @@ CHART_URL = (
 
 
 def _fetch_json(url: str) -> dict:
-    # This machine's TLS-inspecting proxy has a CA cert that fails Python
-    # 3.13's VERIFY_X509_STRICT; relax only that flag — chain and hostname
-    # verification remain on.
     ctx = ssl.create_default_context()
     ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -29,11 +20,6 @@ def _fetch_json(url: str) -> dict:
 
 
 def load_daily(ticker: str, cache_dir: str = "data_cache") -> pd.DataFrame:
-    """Return daily OHLCV for an equity/ETF ticker, indexed by date.
-
-    Prices are split/dividend adjusted. Fetches full history on first use
-    and caches to CSV, so repeat runs work offline.
-    """
     ticker = ticker.strip().upper()
     cache = Path(cache_dir) / f"{ticker}.csv"
     if cache.exists():
@@ -62,7 +48,6 @@ def load_daily(ticker: str, cache_dir: str = "data_cache") -> pd.DataFrame:
         .tz_localize(None),
     ).dropna(subset=["Close"])
 
-    # Adjust OHLC for splits/dividends so returns are total returns.
     ratio = df["AdjClose"] / df["Close"]
     for col in ("Open", "High", "Low", "Close"):
         df[col] = df[col] * ratio
