@@ -1,14 +1,15 @@
 # Daily Backtesting Engine
 
-Minimal daily backtesting engine.
+Daily backtester. SMA crossover and volatility-targeting strategies,
+benchmarked against buy-and-hold with significance testing.
 
-**[Live dashboard →](https://oliver-house.github.io/daily-backtester/)**
+**[Live dashboard](https://oliver-house.github.io/daily-backtester/)**
 
 ## Usage
 
 ```
-python run.py SPY --strategy sma
-python sweep.py --universe
+python run.py SPY --strategy sma --fast 50 --slow 200
+python sweep.py --universe --strategy vol
 python report.py
 ```
 
