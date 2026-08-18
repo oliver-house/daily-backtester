@@ -2,11 +2,14 @@
 
 Minimal daily backtesting engine.
 
+**[Live dashboard →](https://oliver-house.github.io/daily-backtester/)**
+
 ## Usage
 
 ```
 python run.py SPY --strategy sma
-python sweep.py SPY
+python sweep.py --universe
+python report.py
 ```
 
 ## Tests

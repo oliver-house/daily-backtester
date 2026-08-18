@@ -1,13 +1,57 @@
+import numpy as np
 import pandas as pd
 import pytest
 
 from backtest.engine import TRADING_DAYS, _stats, run
+from backtest.inference import newey_west_se, paired_test
 from backtest.strategy import sma_crossover, vol_target
 
 
 def make_prices(values):
     idx = pd.bdate_range("2024-01-01", periods=len(values))
     return pd.Series(values, index=idx, dtype=float)
+
+
+def plain_se(x):
+    return x.std() / len(x) ** 0.5
+
+
+def test_newey_west_matches_plain_se_on_iid_data():
+    x = pd.Series(np.random.default_rng(0).standard_normal(2000))
+    assert newey_west_se(x) == pytest.approx(plain_se(x), rel=0.25)
+
+
+def test_newey_west_exceeds_plain_se_under_autocorrelation():
+    x = pd.Series(([1.0] * 15 + [-1.0] * 15) * 40)
+    assert newey_west_se(x) > 1.5 * plain_se(x)
+
+
+def test_paired_test_finds_nothing_between_identical_series():
+    a = pd.Series(np.random.default_rng(1).standard_normal(500))
+    result = paired_test(a, a)
+    assert result["t_stat"] == 0.0
+    assert result["p_value"] == 1.0
+
+
+def test_paired_test_detects_a_consistent_edge():
+    benchmark = pd.Series([0.0] * 1000)
+    strategy = pd.Series([0.002, 0.001] * 500)
+    result = paired_test(strategy, benchmark)
+    assert result["mean_diff"] == pytest.approx(0.0015)
+    assert result["t_stat"] > 10
+    assert result["p_value"] < 0.001
+
+
+def test_strategy_grids_are_valid():
+    from sweep import STRATEGY_GRIDS
+
+    df = pd.DataFrame({"Close": make_prices([100 + i * 0.5 for i in range(400)])})
+    for _, (fn, grid) in STRATEGY_GRIDS.items():
+        assert grid
+        for params in grid:
+            positions = fn(df, **params)
+            assert len(positions) == len(df)
+            assert positions.notna().all()
 
 
 def test_rejects_inputs_that_would_fail_silently():
