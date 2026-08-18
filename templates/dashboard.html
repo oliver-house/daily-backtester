@@ -104,9 +104,7 @@
   </div>
 
   <footer>
-    Generated <span id="generated"></span> by <code>report.py</code>; recomputed live by
-    the same formulas as <code>backtest/engine.py</code>. Data: Yahoo Finance, split- and
-    dividend-adjusted. Source:
+    Data: Yahoo Finance.
     <a href="https://github.com/oliver-house/daily-backtester">github.com/oliver-house/daily-backtester</a>.
   </footer>
 </div>
@@ -377,12 +375,9 @@ function statsTable(label, stats, benchStats) {
 function verdict(sig) {
   const diff = sig.mean_diff * TRADING_DAYS;
   const cls = diff >= 0 ? "good" : "bad";
-  const text = sig.p_value < 0.05 ? "statistically significant at p &lt; 0.05"
-                                   : "<strong>not</strong> statistically significant";
   el("verdict").innerHTML =
     `Against buy &amp; hold: <span class="${cls}">${diff >= 0 ? "+" : ""}${pct(diff)}/yr</span>, ` +
-    `t = ${sig.t_stat.toFixed(2)}, p = ${sig.p_value.toFixed(3)} — ${text}. ` +
-    `<span class="note">(Newey–West, ${sig.lags} lags, ${sig.days} days.)</span>`;
+    `t = ${sig.t_stat.toFixed(2)}, p = ${sig.p_value.toFixed(3)}`;
 }
 
 function currentParams(strategy) {
@@ -477,7 +472,6 @@ function render() {
 }
 
 function init() {
-  el("generated").textContent = DATA.generated;
   fill(el("ticker"), DATA.tickers);
   fill(el("strategy"), ["sma", "vol", "hold"], ["SMA crossover", "Vol target", "Buy & hold"]);
   const d = DATA.defaults;
