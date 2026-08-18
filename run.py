@@ -1,7 +1,15 @@
 import argparse
 from pathlib import Path
 
-from backtest import load_daily, run, buy_and_hold, sma_crossover, vol_target
+from backtest import (
+    buy_and_hold,
+    load_daily,
+    paired_test,
+    run,
+    sma_crossover,
+    vol_target,
+)
+from backtest.engine import TRADING_DAYS
 
 FIGURES_DIR = Path("figures")
 EQUITY_PLOT_FILENAME = "equity.png"
@@ -70,6 +78,12 @@ def main() -> None:
     stats = result.stats
     print(f"\n  Sharpe 95% CI: {stats['sharpe_ci_low']:+.2f} to {stats['sharpe_ci_high']:+.2f}"
           f"  (se {stats['sharpe_se']:.2f})")
+
+    if benchmark:
+        test = paired_test(result.daily_returns, benchmark.daily_returns)
+        print(f"  vs buy & hold: {test['mean_diff'] * TRADING_DAYS:+.2%}/yr, "
+              f"t = {test['t_stat']:+.2f}, p = {test['p_value']:.3f} "
+              f"(Newey-West, {test['lags']} lags)")
 
     if not args.no_plot:
         try:
