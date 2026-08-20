@@ -76,8 +76,6 @@ def test_rejects_inputs_that_would_fail_silently():
         sma_crossover(pd.DataFrame({"Close": prices}), fast=0, slow=3)
     with pytest.raises(ValueError):
         vol_target(pd.DataFrame({"Close": prices}), lookback=0)
-    with pytest.raises(ValueError):
-        vol_target(pd.DataFrame({"Close": prices}), max_leverage=-2.0)
 
 
 def test_rejects_costs_that_drive_equity_non_positive():
@@ -92,7 +90,7 @@ def test_rejects_costs_that_drive_equity_non_positive():
 
 def test_vol_target_is_flat_when_volatility_is_unusable():
     flat = pd.DataFrame({"Close": make_prices([100.0] * 8)})
-    positions = vol_target(flat, target_vol=0.1, lookback=3, max_leverage=1.0)
+    positions = vol_target(flat, target_vol=0.1, lookback=3)
     assert (positions == 0.0).all()
 
 
@@ -193,12 +191,20 @@ def test_vol_target_scales_inversely_with_volatility():
     wild = [100 + (2 if i % 2 else -2) for i in range(40)]
     df = pd.DataFrame({"Close": make_prices(calm + wild)})
 
-    positions = vol_target(df, target_vol=0.10, lookback=20, max_leverage=1.0)
+    positions = vol_target(df, target_vol=0.10, lookback=20)
     assert (positions >= 0).all() and (positions <= 1.0).all()
 
     calm_pos = positions.iloc[35]
     wild_pos = positions.iloc[-1]
     assert wild_pos == pytest.approx(calm_pos / 2, rel=0.2)
+
+
+def test_vol_target_is_capped_at_one_not_levered():
+    calm = make_prices([100 + 0.01 * (i % 2) for i in range(60)])
+    df = pd.DataFrame({"Close": calm})
+    positions = vol_target(df, target_vol=5.0, lookback=20)
+    assert (positions <= 1.0).all()
+    assert positions.iloc[-1] == pytest.approx(1.0)
 
 
 def test_sma_crossover_positions_are_zero_or_one():
