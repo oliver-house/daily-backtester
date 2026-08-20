@@ -328,6 +328,203 @@ function render() {
   }
 }
 
+// ---------------------------------------------------------------------
+// Evidence panel
+//
+// Precomputed by report.py at build time and embedded in DATA.evidence,
+// because a 1000-draw stationary bootstrap over a 26-column matrix is not
+// something to run on a keystroke. Fixed at one cost and one risk-free
+// rate, and says so, rather than appearing to respond to the controls above.
+// ---------------------------------------------------------------------
+
+const SVG_W = 300, SVG_H = 210;
+
+function axes(left, right, top, bottom) {
+  return {
+    x: (t) => left + t * (SVG_W - left - right),
+    y: (t) => SVG_H - bottom - t * (SVG_H - top - bottom),
+  };
+}
+
+function scaler(lo, hi) {
+  const pad = (hi - lo) * 0.08 || 0.1;
+  const min = lo - pad, max = hi + pad;
+  return { min, max, at: (v) => (v - min) / (max - min) };
+}
+
+function axisLine(x1, y1, x2, y2, dash) {
+  return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" ` +
+         `y2="${y2.toFixed(1)}" stroke="var(--line)" stroke-width="1"` +
+         (dash ? ` stroke-dasharray="${dash}"` : "") + `/>`;
+}
+
+function tickText(x, y, text, anchor) {
+  return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" ` +
+         `font-size="9" fill="var(--muted)">${text}</text>`;
+}
+
+function drawScatter(ev) {
+  const L = 30, R = 8, T = 10, B = 22;
+  const ax = axes(L, R, T, B);
+  const all = ev.grid.flatMap((p) => [p.is, p.oos]).concat([ev.hold_oos, ev.hold_is]);
+  const s = scaler(Math.min(...all), Math.max(...all));
+
+  let svg = axisLine(L, SVG_H - B, SVG_W - R, SVG_H - B) + axisLine(L, T, L, SVG_H - B);
+
+  const corner = [Math.max(s.min, s.min), Math.min(s.max, s.max)];
+  svg += `<line x1="${ax.x(s.at(corner[0])).toFixed(1)}" y1="${ax.y(s.at(corner[0])).toFixed(1)}" ` +
+         `x2="${ax.x(s.at(corner[1])).toFixed(1)}" y2="${ax.y(s.at(corner[1])).toFixed(1)}" ` +
+         `stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+
+  const holdY = ax.y(s.at(ev.hold_oos));
+  svg += `<line x1="${L}" y1="${holdY.toFixed(1)}" x2="${SVG_W - R}" y2="${holdY.toFixed(1)}" ` +
+         `stroke="var(--benchmark)" stroke-width="1.5"/>`;
+  svg += tickText(SVG_W - R - 2, holdY - 3, "buy &amp; hold", "end");
+
+  for (const [i, point] of ev.grid.entries()) {
+    const cx = ax.x(s.at(point.is)), cy = ax.y(s.at(point.oos));
+    svg += i === ev.best
+      ? `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="var(--accent)"/>` +
+        `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7.5" fill="none" ` +
+        `stroke="var(--accent)" stroke-width="1"/>`
+      : `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2.6" fill="var(--muted)" opacity="0.55"/>`;
+  }
+
+  for (const v of [s.min, (s.min + s.max) / 2, s.max]) {
+    svg += tickText(L - 4, ax.y(s.at(v)) + 3, v.toFixed(1), "end");
+    svg += tickText(ax.x(s.at(v)), SVG_H - B + 11, v.toFixed(1), "middle");
+  }
+  svg += tickText(SVG_W / 2, SVG_H - 2, "in-sample Sharpe", "middle");
+  el("ev-scatter").innerHTML = svg;
+
+  const winner = ev.grid[ev.best];
+  const beaten = ev.grid.filter((p) => p.oos > winner.oos).length;
+  el("ev-scatter-note").innerHTML =
+    `The ring marks the set with the best in-sample Sharpe (${winner.label}, ` +
+    `${winner.is.toFixed(2)}). Out of sample it scored ${winner.oos.toFixed(2)}, ` +
+    `behind ${beaten} of the other ${ev.grid.length - 1} sets and ` +
+    `${winner.oos >= ev.hold_oos ? "ahead of" : "behind"} buy &amp; hold ` +
+    `(${ev.hold_oos.toFixed(2)}). Split at ${ev.split_date}.`;
+}
+
+function drawNull(ev) {
+  const L = 8, R = 8, T = 12, B = 22;
+  const rc = ev.reality_check, hist = rc.null;
+  const ax = axes(L, R, T, B);
+  const lo = hist.edges[0], hi = hist.edges[hist.edges.length - 1];
+  const span = hi - lo || 1;
+  const peak = Math.max(...hist.counts) || 1;
+  const xAt = (v) => ax.x((v - lo) / span);
+
+  let svg = axisLine(L, SVG_H - B, SVG_W - R, SVG_H - B);
+  const width = (SVG_W - L - R) / hist.counts.length;
+  for (const [i, count] of hist.counts.entries()) {
+    if (!count) continue;
+    const h = (count / peak) * (SVG_H - T - B);
+    svg += `<rect x="${(L + i * width).toFixed(1)}" y="${(SVG_H - B - h).toFixed(1)}" ` +
+           `width="${Math.max(width - 0.6, 0.6).toFixed(1)}" height="${h.toFixed(1)}" ` +
+           `fill="var(--muted)" opacity="0.45"/>`;
+  }
+
+  const sx = xAt(rc.statistic);
+  svg += `<line x1="${sx.toFixed(1)}" y1="${T}" x2="${sx.toFixed(1)}" y2="${SVG_H - B}" ` +
+         `stroke="var(--accent)" stroke-width="2"/>`;
+  svg += tickText(Math.min(sx + 4, SVG_W - R), T + 8,
+                  sx > SVG_W * 0.6 ? "" : "observed", "start");
+  svg += tickText(L, SVG_H - 2, "mean daily excess return, best of grid", "start");
+  el("ev-null").innerHTML = svg;
+
+  const share = (rc.p_value * 100).toFixed(1);
+  el("ev-null-note").innerHTML =
+    `${rc.n_boot} stationary-bootstrap resamples of the whole grid at once ` +
+    `(mean block ${rc.mean_block}d), so the correlation between parameter sets ` +
+    `is preserved rather than assumed away. <strong>p = ${rc.p_value.toFixed(3)}</strong>: ` +
+    `${share}% of resampled grids threw up a best member at least this good with ` +
+    `no edge present anywhere.`;
+}
+
+function drawFolds(ev) {
+  const wf = ev.walk_forward;
+  if (!wf || !wf.folds.length) {
+    el("ev-folds").innerHTML =
+      `<text x="150" y="105" text-anchor="middle" font-size="11" fill="var(--muted)">` +
+      `Not enough history for a walk-forward split.</text>`;
+    el("ev-folds-note").textContent = "";
+    return;
+  }
+
+  const L = 26, R = 8, T = 12, B = 26;
+  const ax = axes(L, R, T, B);
+  const values = wf.folds.flatMap((f) => [f.oos, f.hold]);
+  const s = scaler(Math.min(0, ...values), Math.max(0, ...values));
+  const zero = ax.y(s.at(0));
+
+  let svg = axisLine(L, zero, SVG_W - R, zero) + axisLine(L, T, L, SVG_H - B);
+  const slot = (SVG_W - L - R) / wf.folds.length;
+  const barWidth = Math.min(slot / 2.6, 12);
+
+  for (const [i, fold] of wf.folds.entries()) {
+    const centre = L + slot * (i + 0.5);
+    for (const [value, colour, offset] of [
+      [fold.oos, "var(--accent)", -barWidth * 0.55],
+      [fold.hold, "var(--benchmark)", barWidth * 0.55],
+    ]) {
+      const y = ax.y(s.at(value));
+      svg += `<rect x="${(centre + offset - barWidth / 2).toFixed(1)}" ` +
+             `y="${Math.min(y, zero).toFixed(1)}" width="${barWidth.toFixed(1)}" ` +
+             `height="${Math.abs(zero - y).toFixed(1)}" fill="${colour}"/>`;
+    }
+    svg += tickText(centre, SVG_H - B + 11, fold.from.slice(2, 4) + "-" + fold.to.slice(2, 4), "middle");
+  }
+  for (const v of [s.min, s.max]) {
+    svg += tickText(L - 4, ax.y(s.at(v)) + 3, v.toFixed(1), "end");
+  }
+  svg += tickText(SVG_W / 2, SVG_H - 2, "out-of-sample Sharpe by fold", "middle");
+  el("ev-folds").innerHTML = svg;
+
+  el("ev-folds-note").innerHTML =
+    `Parameters are reselected on everything before each fold, then traded ` +
+    `forward. The first ${wf.embargo} days of every fold are dropped, because ` +
+    `positions there are still computed from training-window prices. ` +
+    `<strong>The selection won ${wf.folds_won} of ${wf.folds.length} folds</strong>; ` +
+    `pooled across all of them, ${(wf.pooled_diff * 100).toFixed(2)}%/yr, ` +
+    `p = ${wf.pooled_p.toFixed(3)}.`;
+}
+
+function renderEvidence(ticker, strategy) {
+  const panel = el("evidence");
+  const ev = (DATA.evidence || {})[ticker] || {};
+  const found = ev[strategy];
+  if (!found) {
+    panel.style.display = "none";
+    return;
+  }
+  panel.style.display = "";
+
+  const settings = DATA.evidence_settings;
+  el("ev-settings").innerHTML =
+    `Fixed at ${settings.cost_bps} bp and a ${(settings.rf * 100).toFixed(1)}% risk-free rate ` +
+    `over ${ticker}'s full history, independent of the controls above. ` +
+    `All ${found.grid.length} parameter sets, not just the one selected.`;
+
+  drawScatter(found);
+  drawNull(found);
+  drawFolds(found);
+
+  const rc = found.reality_check, wf = found.walk_forward;
+  const survives = rc.p_value < 0.05;
+  const headline = survives
+    ? "The edge survives correcting for the search."
+    : "No edge survives correcting for the search.";
+  el("ev-verdict").innerHTML =
+    `<strong>${headline}</strong> Reality Check p = ${rc.p_value.toFixed(3)} on the whole grid, ` +
+    `resampled together.` +
+    (wf
+      ? ` Walk-forward reselection: the chosen set won ${wf.folds_won} of ` +
+        `${wf.folds.length} out-of-sample folds.`
+      : ` Not enough history here for a walk-forward split.`);
+}
+
 function init() {
   fill(el("ticker"), DATA.tickers);
   fill(el("strategy"), ["sma", "vol", "hold"], ["SMA crossover", "Vol target", "Buy & hold"]);
