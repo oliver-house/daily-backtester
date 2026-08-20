@@ -2,8 +2,9 @@ import argparse
 from pathlib import Path
 
 from backtest import (
+    add_data_args,
     buy_and_hold,
-    load_daily,
+    loader,
     paired_test,
     run,
     sma_crossover,
@@ -25,14 +26,15 @@ def main() -> None:
                         help="annual volatility target for --strategy vol")
     parser.add_argument("--lookback", type=int, default=20,
                         help="realised-vol lookback for --strategy vol")
-    parser.add_argument("--cost-bps", type=float, default=5.0, help="cost per trade, bps")
-    parser.add_argument("--rf", type=float, default=0.0,
-                        help="annual risk-free rate earned on cash, e.g. 0.04")
+    parser.add_argument("--cost-bps", type=float, default=2.0, help="cost per trade, bps")
+    parser.add_argument("--rf", type=float, default=0.04,
+                        help="annual risk-free rate earned on cash, e.g. 0.04. Idle cash still earns interest at this rate, so Sharpe/Sortino are computed on returns in excess of it rather than crediting idle cash with zero")
     parser.add_argument("--start", help="start date, e.g. 2010-01-01")
     parser.add_argument("--no-plot", action="store_true", help="skip saving the equity curve")
+    add_data_args(parser)
     args = parser.parse_args()
 
-    df = load_daily(args.ticker)
+    df = loader(args)(args.ticker)
     if args.start:
         df = df.loc[args.start:]
 
