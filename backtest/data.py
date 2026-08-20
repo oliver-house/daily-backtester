@@ -19,11 +19,18 @@ def _fetch_json(url: str) -> dict:
         return json.load(resp)
 
 
-def load_daily(ticker: str, cache_dir: str = "data_cache") -> pd.DataFrame:
+def load_daily(
+    ticker: str, cache_dir: str = "data_cache", allow_download: bool = True
+) -> pd.DataFrame:
     ticker = ticker.strip().upper()
     cache = Path(cache_dir) / f"{ticker}.csv"
     if cache.exists():
         return pd.read_csv(cache, index_col="Date", parse_dates=True)
+
+    if not allow_download:
+        raise ValueError(
+            f"no cached data for {ticker!r} in {cache_dir!r} and downloads are disabled"
+        )
 
     try:
         payload = _fetch_json(CHART_URL.format(ticker=ticker))
@@ -57,3 +64,17 @@ def load_daily(ticker: str, cache_dir: str = "data_cache") -> pd.DataFrame:
     cache.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(cache)
     return df
+
+
+def add_data_args(parser) -> None:
+    parser.add_argument("--cache-dir", default="data_cache",
+                        help="directory of cached price CSVs")
+    parser.add_argument("--offline", action="store_true",
+                        help="fail on a cache miss instead of downloading")
+
+
+def loader(args):
+    def load(ticker: str) -> pd.DataFrame:
+        return load_daily(ticker, args.cache_dir, allow_download=not args.offline)
+
+    return load

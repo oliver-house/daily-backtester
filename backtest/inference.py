@@ -20,11 +20,14 @@ def newey_west_se(x, lags: int | None = None) -> float:
     lags = max(0, min(lags, n - 1))
 
     dev = (series - series.mean()).to_numpy()
-    variance = float((dev * dev).sum() / n)
+    iid_variance = float((dev * dev).sum() / n)
+    variance = iid_variance
     for j in range(1, lags + 1):
         cov = float((dev[j:] * dev[:-j]).sum() / n)
         variance += 2.0 * (1.0 - j / (lags + 1)) * cov
 
+    if variance <= 0:
+        variance = iid_variance
     if variance <= 0:
         return 0.0
     return (variance / n) ** 0.5
