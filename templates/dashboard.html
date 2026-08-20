@@ -307,6 +307,7 @@ function render() {
   drawChart(result.equity, benchResult.equity);
   statsTable(strategyLabel, stats, benchStats);
   verdict(pairedTest(result.daily, benchResult.daily));
+  renderEvidence(ticker, strategy);
 
   // A single ruinous parameter choice can crush equity to a technically-positive
   // but economically meaningless sliver without ever hitting the hard equity<=0
