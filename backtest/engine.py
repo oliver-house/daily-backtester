@@ -4,6 +4,7 @@ import pandas as pd
 
 TRADING_DAYS = 252
 
+POSITION_EPSILON = 1e-12
 
 @dataclass
 class Result:
@@ -50,7 +51,7 @@ def run(
     return Result(equity=equity, daily_returns=daily, stats=stats)
 
 
-def _risk_adjusted_ratio(mean_excess: float, dispersion: float) -> float:
+def annualised_ratio(mean_excess: float, dispersion: float) -> float:
     if dispersion > 0:
         return mean_excess / dispersion * TRADING_DAYS**0.5
     if mean_excess > 0:
@@ -70,10 +71,10 @@ def _stats(
     vol = daily.std() * TRADING_DAYS**0.5
 
     excess = daily - rf_daily
-    sharpe = _risk_adjusted_ratio(excess.mean(), excess.std())
+    sharpe = annualised_ratio(excess.mean(), excess.std())
 
     downside_dev = ((excess.clip(upper=0.0) ** 2).mean()) ** 0.5
-    sortino = _risk_adjusted_ratio(excess.mean(), downside_dev)
+    sortino = annualised_ratio(excess.mean(), downside_dev)
 
     if sharpe in (float("inf"), float("-inf")):
         sharpe_se = float("inf")
@@ -85,7 +86,8 @@ def _stats(
 
     running_peak = equity.cummax().clip(lower=1.0)
     max_drawdown = (equity / running_peak - 1.0).min()
-    trades = int((positions.diff().fillna(positions.abs()) != 0).sum())
+    changes = positions.diff().fillna(positions).abs()
+    trades = int((changes > POSITION_EPSILON).sum())
     return {
         "total_return": total_return,
         "cagr": cagr,
