@@ -1,14 +1,5 @@
 const TRADING_DAYS = 252;
-// Mirrors POSITION_EPSILON in backtest/engine.py; see the comment there for
-// why exact equality miscounts trades. tests/test_parity.py checks the two
-// agree on real vol-target series, which is where it bites.
 const POSITION_EPSILON = 1e-12;
-
-// ---------------------------------------------------------------------
-// Engine: a direct port of backtest/engine.py, backtest/strategy.py, and
-// backtest/inference.py. Every formula here has a corresponding line in
-// the Python source, so the two stay in sync by inspection.
-// ---------------------------------------------------------------------
 
 function mean(a) { return a.reduce((s, v) => s + v, 0) / a.length; }
 
@@ -31,8 +22,6 @@ function rollingMean(a, window) {
 }
 
 function rollingStd(a, window) {
-  // Matches pandas rolling(window).std(): NaN unless the full window is
-  // free of NaN, sample standard deviation (ddof=1).
   const out = new Array(a.length).fill(NaN);
   for (let i = window - 1; i < a.length; i++) {
     const win = a.slice(i - window + 1, i + 1);
@@ -43,7 +32,6 @@ function rollingStd(a, window) {
 }
 
 function pctChange(prices) {
-  // pandas .pct_change(): NaN for the first element, undefined otherwise.
   const out = new Array(prices.length).fill(NaN);
   for (let i = 1; i < prices.length; i++) out[i] = (prices[i] - prices[i - 1]) / prices[i - 1];
   return out;
@@ -55,7 +43,7 @@ const Strategy = {
   sma: (prices, { fast, slow }) => {
     if (fast < 1 || fast >= slow) return prices.map(() => 0.0);
     const f = rollingMean(prices, fast), s = rollingMean(prices, slow);
-    return prices.map((_, i) => (f[i] > s[i]) ? 1.0 : 0.0); // NaN > NaN is false, matches pandas
+    return prices.map((_, i) => (f[i] > s[i]) ? 1.0 : 0.0);
   },
 
   vol: (prices, { targetVol, lookback }) => {
@@ -63,8 +51,7 @@ const Strategy = {
     const returns = pctChange(prices);
     const realised = rollingStd(returns, lookback).map(v => v * Math.sqrt(TRADING_DAYS));
     return realised.map(v => {
-      if (!(v > 0)) return 0.0; // NaN (warm-up) or exactly 0 (unusable): flat
-      // Capped at 1: unlevered, long-only. Matches backtest/strategy.py.
+      if (!(v > 0)) return 0.0;
       return Math.min(targetVol / v, 1.0);
     });
   },
@@ -95,17 +82,11 @@ function runBacktest(prices, positions, costBps, rfAnnual) {
     daily[i] = held[i] * assetReturns[i] + (1 - held[i]) * rfDaily - costs[i];
   }
 
-  // 1 + d_t = h_t(1+r_t) + (1-h_t)(1+rho) - c_t must stay > 0, or equity hits
-  // zero/negative -- only costs can cause this. Mirrors the raise in
-  // backtest/engine.py rather than silently producing NaN/garbage equity.
   const equity = new Array(n);
   let cum = 1;
   for (let i = 0; i < n; i++) {
     const growth = 1 + daily[i];
     if (growth <= 0) {
-      // Carry the raw day index rather than formatting a message here:
-      // this function only has prices/positions, not the ticker's date
-      // strings, so the caller (which does) builds the final wording.
       const err = new Error("equity wipeout");
       err.dayIndex = i;
       err.dailyReturn = daily[i];
@@ -158,7 +139,6 @@ function computeStats(equity, daily, rfDaily, trades) {
 }
 
 function erfc(x) {
-  // Abramowitz-Stegun 7.1.26, |error| < 1.5e-7.
   const z = Math.abs(x);
   const t = 1 / (1 + 0.5 * z);
   const tau = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 +
@@ -188,9 +168,6 @@ function pairedTest(strategyDaily, benchmarkDaily) {
   return { mean_diff: meanDiff, se, t_stat: tStat, p_value: pValue, days: n, lags };
 }
 
-// Exported for tests/parity_runner.js, which checks these functions against
-// backtest/engine.py on shared fixtures. `module` is undefined in a browser,
-// so this line does nothing once report.py inlines the file into the page.
 if (typeof module !== "undefined") {
   module.exports = { TRADING_DAYS, mean, sampleStd, rollingMean, rollingStd, pctChange,
                      Strategy, riskAdjustedRatio, runBacktest, computeStats, erfc, pairedTest };
