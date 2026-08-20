@@ -1,3 +1,3 @@
-pandas
-pytest
-matplotlib  # optional, only needed for --plot
+pandas>=2.0
+numpy>=1.24
+matplotlib>=3.7  # optional, only needed for run.py's equity plot
