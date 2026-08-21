@@ -119,6 +119,11 @@
         <svg id="ev-scatter" viewBox="0 0 300 210" preserveAspectRatio="xMidYMid meet"></svg>
         <p class="note" id="ev-scatter-note"></p>
       </figure>
+      <figure>
+        <figcaption>Reality Check: best of grid vs its null</figcaption>
+        <svg id="ev-null" viewBox="0 0 300 210" preserveAspectRatio="xMidYMid meet"></svg>
+        <p class="note" id="ev-null-note"></p>
+      </figure>
     </div>
   </section>
 
@@ -352,6 +357,37 @@ function drawScatter(ev) {
     `Split: ${ev.split_date}.`;
 }
 
+function drawNull(ev) {
+  const L = 8, R = 8, T = 12, B = 22;
+  const rc = ev.reality_check, hist = rc.null;
+  const ax = axes(L, R, T, B);
+  const lo = hist.edges[0], hi = hist.edges[hist.edges.length - 1];
+  const span = hi - lo || 1;
+  const peak = Math.max(...hist.counts) || 1;
+  const xAt = (v) => ax.x((v - lo) / span);
+
+  let svg = axisLine(L, SVG_H - B, SVG_W - R, SVG_H - B);
+  const width = (SVG_W - L - R) / hist.counts.length;
+  for (const [i, count] of hist.counts.entries()) {
+    if (!count) continue;
+    const h = (count / peak) * (SVG_H - T - B);
+    svg += `<rect x="${(L + i * width).toFixed(1)}" y="${(SVG_H - B - h).toFixed(1)}" ` +
+           `width="${Math.max(width - 0.6, 0.6).toFixed(1)}" height="${h.toFixed(1)}" ` +
+           `fill="var(--muted)" opacity="0.45"/>`;
+  }
+
+  const sx = xAt(rc.statistic);
+  svg += `<line x1="${sx.toFixed(1)}" y1="${T}" x2="${sx.toFixed(1)}" y2="${SVG_H - B}" ` +
+         `stroke="var(--accent)" stroke-width="2"/>`;
+  svg += tickText(Math.min(sx + 4, SVG_W - R), T + 8,
+                  sx > SVG_W * 0.6 ? "" : "observed", "start");
+  svg += tickText(L, SVG_H - 2, "mean daily excess return, best of grid", "start");
+  el("ev-null").innerHTML = svg;
+
+  el("ev-null-note").innerHTML =
+    `p = ${rc.p_value.toFixed(3)}, n_boot=${rc.n_boot}, mean block=${rc.mean_block}d`;
+}
+
 function renderEvidence(ticker, strategy) {
   const panel = el("evidence");
   const ev = (DATA.evidence || {})[ticker] || {};
@@ -367,6 +403,7 @@ function renderEvidence(ticker, strategy) {
     `${settings.cost_bps}bp, rf ${(settings.rf * 100).toFixed(1)}%, n=${found.grid.length}`;
 
   drawScatter(found);
+  drawNull(found);
 }
 
 function init() {
