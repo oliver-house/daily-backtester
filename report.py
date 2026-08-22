@@ -59,7 +59,7 @@ def build_evidence(df, strategy: str) -> dict:
         difference = daily - hold
         differences[label(params)] = difference.iloc[:split]
         points.append({
-            "label": label(params),
+            "params": params,
             "is": round(sharpe(daily, 0, split), 4),
             "oos": round(sharpe(daily, split, len(df)), 4),
         })

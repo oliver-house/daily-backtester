@@ -41,7 +41,8 @@ STRATEGY_GRIDS = {
 
 
 def label(params: dict) -> str:
-    return "/".join(str(v) for v in params.values())
+    parts = (f"{v:.0%}" if k == "target_vol" else str(v) for k, v in params.items())
+    return "/".join(parts)
 
 
 def sweep_ticker(ticker, strategy="sma", cost_bps=2.0, rf=0.04, start=None,
