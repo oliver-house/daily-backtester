@@ -94,7 +94,7 @@ def build_evidence(df, strategy: str) -> dict:
                 "fold": f["fold"],
                 "from": str(f["test"][0]),
                 "to": str(f["test"][1]),
-                "params": label(f["params"]),
+                "params": f["params"],
                 "oos": round(f["oos_sharpe"], 4),
                 "hold": round(f["hold_oos_sharpe"], 4),
             } for f in wf["folds"]],

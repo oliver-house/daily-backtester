@@ -134,6 +134,11 @@
         <svg id="ev-null" viewBox="0 0 300 210" preserveAspectRatio="xMidYMid meet"></svg>
         <p class="note" id="ev-null-note"></p>
       </figure>
+      <figure>
+        <figcaption>Walk-forward: out-of-sample Sharpe by fold</figcaption>
+        <svg id="ev-folds" viewBox="0 0 300 210" preserveAspectRatio="xMidYMid meet"></svg>
+        <p class="note" id="ev-folds-note"></p>
+      </figure>
     </div>
   </section>
 
@@ -417,6 +422,52 @@ function drawNull(ev) {
     `</span>`;
 }
 
+function drawFolds(ev) {
+  const wf = ev.walk_forward;
+  if (!wf || !wf.folds.length) {
+    el("ev-folds").innerHTML =
+      `<text x="150" y="105" text-anchor="middle" font-size="11" fill="var(--muted)">` +
+      `no feasible folds</text>`;
+    el("ev-folds-note").innerHTML = "";
+    return;
+  }
+
+  const L = 26, R = 8, T = 12, B = 26;
+  const ax = axes(L, R, T, B);
+  const values = wf.folds.flatMap((f) => [f.oos, f.hold]);
+  const s = scaler(Math.min(0, ...values), Math.max(0, ...values));
+  const zero = ax.y(s.at(0));
+
+  let svg = axisLine(L, zero, SVG_W - R, zero) + axisLine(L, T, L, SVG_H - B);
+  const slot = (SVG_W - L - R) / wf.folds.length;
+  const barWidth = Math.min(slot / 2.6, 12);
+
+  for (const [i, fold] of wf.folds.entries()) {
+    const centre = L + slot * (i + 0.5);
+    for (const [value, colour, offset] of [
+      [fold.oos, "var(--accent)", -barWidth * 0.55],
+      [fold.hold, "var(--benchmark)", barWidth * 0.55],
+    ]) {
+      const y = ax.y(s.at(value));
+      svg += `<rect x="${(centre + offset - barWidth / 2).toFixed(1)}" ` +
+             `y="${Math.min(y, zero).toFixed(1)}" width="${barWidth.toFixed(1)}" ` +
+             `height="${Math.abs(zero - y).toFixed(1)}" fill="${colour}"/>`;
+    }
+    svg += tickText(centre, SVG_H - B + 11, fold.from.slice(2, 4) + "-" + fold.to.slice(2, 4), "middle");
+  }
+  for (const v of [s.min, s.max]) {
+    svg += tickText(L - 4, ax.y(s.at(v)) + 3, v.toFixed(1), "end");
+  }
+  el("ev-folds").innerHTML = svg;
+
+  el("ev-folds-note").innerHTML = `<span class="chipline">` +
+    chip("folds won", `${wf.folds_won}/${wf.folds.length}`) +
+    chip("embargo", `${wf.embargo} days`) +
+    chip("vs hold, pooled", `${wf.pooled_diff >= 0 ? "+" : ""}${(wf.pooled_diff * 100).toFixed(2)}%/yr`) +
+    chip("pooled p-value", wf.pooled_p.toFixed(3)) +
+    `</span>`;
+}
+
 function renderEvidence(ticker, strategy) {
   const panel = el("evidence");
   const ev = (DATA.evidence || {})[ticker] || {};
@@ -436,6 +487,7 @@ function renderEvidence(ticker, strategy) {
 
   drawScatter(found);
   drawNull(found);
+  drawFolds(found);
 }
 
 function init() {
