@@ -6,6 +6,8 @@ Daily backtester for SMA-crossover and volatility-targeting rules, benchmarked a
 
 **[Live dashboard](https://oliver-house.github.io/daily-backtester/)**
 
+[![The dashboard: SPY under SMA 50/200, with the in-sample against out-of-sample Sharpe scatter, White's Reality Check null distribution, and walk-forward folds](docs/dashboard.png)](https://oliver-house.github.io/daily-backtester/)
+
 ## Result
 
 Neither strategy family shows a detectable edge over buy-and-hold. Across all 18 tickers x 2 strategies (36 pairs):
