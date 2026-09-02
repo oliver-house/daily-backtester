@@ -4,9 +4,9 @@
 
 Daily backtester for SMA-crossover and volatility-targeting rules, benchmarked against buy-and-hold with data-snooping-aware significance testing. 18 tickers, 2018-2026, daily bars from Yahoo Finance.
 
-**[Live dashboard](https://oliver-house.github.io/daily-backtester/)**
-
 [![The dashboard: SPY under SMA 50/200, with the in-sample against out-of-sample Sharpe scatter, White's Reality Check null distribution, and walk-forward folds](docs/dashboard.png)](https://oliver-house.github.io/daily-backtester/)
+
+**[Explore it live](https://oliver-house.github.io/daily-backtester/)** - pick a ticker, change the parameters, and the statistics recompute in the browser.
 
 ## Result
 
